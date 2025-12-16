@@ -3,12 +3,6 @@
  */
 
 /**
- *  Lekérjük a tableselectort, és regisztrálunk egy change eseménykezelőt!
- */
-
-
-
-/**
  * Ez a függvény a javascript legvégén fut le, amikor már minden elem betöltött.
  * Első lépésben vizsgáljuk a checkbox értékét, és az alapján beállítjuk a többi elem
  * státuszát (ha nincs bepipálva akkor a mano2 és a muszak2 értéke nem engedélyezett)
@@ -140,7 +134,7 @@ function createNewElement(obj, form, array) {
     form.reset();
     // ismerős rész vége
     
-    const mano2 = form.getElementById("masodikmano");
+    const mano2 = document.getElementById("masodikmano");
     changeCheckboxValue(mano2);
 }
 
@@ -159,14 +153,16 @@ function createNewElement(obj, form, array) {
  */
 function mapMuszak(muszakValue){
     
-    if (mapMuszak == "1") {muszakValue = "Délelőttös"};
-    if (mapMuszak == "2") {muszakValue = "Délutános"};
-    if (mapMuszak == "3") {muszakValue = "Éjszakai"};
+    if (muszakValue == "1") {muszakValue = "Délelőttös"};
+    if (muszakValue == "2") {muszakValue = "Délutános"};
+    if (muszakValue == "3") {muszakValue = "Éjszakai"};
 
     return muszakValue;
 }
 
-
+/**
+ *  Lekérjük a tableselectort, és regisztrálunk egy change eseménykezelőt!
+ */
 const tableSelector = document.getElementById("tableselector");
 tableSelector.addEventListener("change", (e) => {
     const target = e.target;
@@ -184,3 +180,154 @@ tableSelector.addEventListener("change", (e) => {
         }
     }
 });
+
+/**
+ * Létrehoz egy cellát és egy sorhoz fűzi.
+ * @param {"th"|"td"} cellType A cella típusa.
+ * @param {string} cellContent A cella szöveges tartalma.
+ * @param {HTMLTableRowElement} parentRow A sor amihez fűzzük.
+ * @returns {HTMLTableCellElement}
+ */
+function createCell(cellType, cellContent, parentRow) {
+    const cell = document.createElement(cellType);
+    cell.innerText = cellContent;
+    parentRow.appendChild(cell);
+
+    return cell;
+}
+
+/**
+ * Újratölti a táblázatot az adatokból.
+ * @param {{what: string, who1: string, shift1: string, who2?: string, shift2?: string}[]} dataArray A táblázat adatai
+ */
+function renderTbody(dataArray) {
+    const tbody = document.getElementById("jstbody");
+    tbody.innerHTML = "";
+
+    for (const item of dataArray) {
+        const row = document.createElement("tr");
+        tbody.appendChild(row);
+
+        const whatCell = createCell("td", item.what, row);
+        createCell("td", item.who1, row);
+        createCell("td", item.shift1, row);
+        
+        if (item.who2 && item.shift2) {
+            whatCell.rowSpan = 2;
+            
+            const secondRow = document.createElement("tr");
+            tbody.appendChild(secondRow);
+
+            createCell("td", item.who2, secondRow);
+            createCell("td", item.shift2, secondRow);
+        }
+    }
+}
+
+/**
+ * Létrehozza a form-ot  az adatok alapján.
+ * @param {{id:string, label:string, name:string, type?:string, optionList?:{value:string, label:string}[]}[]} formData A form adatai.
+ * @returns {HTMLFormElement}
+ */
+function createForm(formData) {
+    const form = document.createElement("form");
+    form.id = "jsform";
+
+    for (const element of formData) {
+        createFormField(element, form);
+    }
+
+    const submitButton = document.createElement("button");
+    submitButton.innerText = "Hozzaadas";
+    form.appendChild(submitButton);
+
+    return form;
+}
+
+/**
+ * Csinál egy mezőt a form-ba.
+ * @param {{id:string, label:string, name:string, type?:string, optionList?:{value:string, label:string}[]}} field A jelenlegi adat.
+ * @param {HTMLFormElement} form A form amihez fűzi.
+ */
+function createFormField(field, form) {
+    const div = document.createElement("div");
+    form.appendChild(div);
+
+    if (field.type && field.type !== "select") {
+        if (field.type === "checkbox") {
+            const input = document.createElement("input");
+            input.id = field.id;
+            input.name = field.name;
+            input.type = "checkbox";
+            div.appendChild(input);
+
+            const label = document.createElement("label");
+            label.innerText = field.label;
+            label.htmlFor = field.id;
+            div.appendChild(label);
+        }
+    } else {
+        const label = document.createElement("label");
+        label.innerText = field.label;
+        label.htmlFor = field.id;
+        div.appendChild(label);
+        div.appendChild(document.createElement("br"));
+
+        if (field.type === "select") {
+            const select = document.createElement("select");
+            select.id = field.id;
+            div.appendChild(select);
+
+            const defaultOption = document.createElement("option");
+            defaultOption.innerText = "Válassz műszakot!";
+            defaultOption.value = "";
+            select.appendChild(defaultOption);
+
+            for (const option of field.optionList) {
+                const opt = document.createElement("option");
+                opt.innerText = option.label;
+                opt.value = option.value;
+                select.appendChild(opt);
+            }
+        } else {
+            const input = document.createElement("input");
+            input.id = field.id;
+            input.name = field.name;
+            div.appendChild(input);
+            div.appendChild(document.createElement("br"));
+        }
+    }
+
+    const errorSpan = document.createElement("span");
+    errorSpan.classList.add("error");
+    div.appendChild(errorSpan);
+}
+
+/**
+ * Validál egy inputot.
+ * @param {HTMLInputElement} inputElement Az ellenőrizendő input.
+ * @returns {boolean}
+ */
+function validateRequired(inputElement) {
+    let isValid = true;
+
+    if (inputElement.value === "") {
+        inputElement.parentElement
+            .querySelector(".error")
+            .innerText = "Kötelező elem!";
+        isValid = false;
+    }
+
+    return isValid;
+}
+
+/**
+ * Törli az error kiírásokat a form-ból.
+ * @param {HTMLFormElement} form A form aminek törli az error feliratait.
+ */
+function clearErrors(form) {
+    const errorSpans = form.querySelectorAll(".error");
+    for (const span of errorSpans) {
+        span.innerText = "";
+    }
+}
